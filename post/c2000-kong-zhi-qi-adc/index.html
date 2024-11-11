@@ -1,0 +1,303 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>C2000控制器---中断系统 | FunMod</title>
+<link rel="shortcut icon" href="https://funmod.github.io/favicon.ico?v=1731317052078">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://funmod.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="C2000控制器---中断系统 | FunMod - Atom Feed" href="https://funmod.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="中断是处理器对需要注意的事件的响应。处理器会尽快执行中断服务例程 (ISR) 中定义的指令，然后返回正常的操作任务。与代码等待事件发生的空闲循环不同，中断提供了根据 CPU 的可用性和任务优先级执行非空闲代码循环的机会。
+C2000设备中的..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://funmod.github.io">
+  <img class="avatar" src="https://funmod.github.io/images/avatar.png?v=1731317052078" alt="">
+  </a>
+  <h1 class="site-title">
+    FunMod
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              C2000控制器---中断系统
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-11-06
+              </span>
+              <span>
+                8 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>中断是处理器对需要注意的事件的响应。处理器会尽快执行中断服务例程 (ISR) 中定义的指令，然后返回正常的操作任务。与代码等待事件发生的空闲循环不同，中断提供了根据 CPU 的可用性和任务优先级执行非空闲代码循环的机会。</p>
+<h2 id="c2000设备中的中断架构">C2000设备中的中断架构</h2>
+<p>请参阅Device Interrupt Architecture’ figure of the device’s Technical Reference Manual (TRM)的“设备中断架构”图，以直观地了解下述中断架构。<br>
+内部中断源包括通用定时器 0、1 和 2，以及C2000上的所有外设。<br>
+外部中断源包括五个外部中断线。从输入 X-BAR 中，INPUT4 映射到 XINT1，INPUT5 映射到 XINT2，INPUT6 映射到 XINT3，INPUT13 映射到 XINT4，INPUT14 映射到 XINT5。<br>
+外设中断扩展块，称为PIE块，用于扩展内核中断能力。定时器 0 直接连接到 PIE 模块以及来自看门狗模块的 WAKEINT 信号。对于双核器件，每个内核都有自己的 PIE 块，两个内核之间共享 XINTx 信号以及外设中断和处理器间 (IPC) 信号。</p>
+<p>该内核有 14 条中断线（对于双核器件，每个内核都有自己的一组 14 条中断线）。中断1-12 来自PIE 块，中断13 映射到定时器1，中断14 映射到定时器2。NMI 模块直接连接到映射到内核的NMI 中断。</p>
+<figure data-type="image" tabindex="1"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/PIE.png" alt="Peripheral Interrupt Expansion" loading="lazy"></figure>
+<p>外设中断扩展 (PIE) 模块将多达 16 个外设中断多路复用到 12 个 CPU 中断线中的每一个中，进一步扩展了对多达 192 个外设中断信号的支持。</p>
+<p>PIE模块还扩展了中断向量表，允许每个独特的中断信号拥有自己的中断服务例程（ISR），从而允许CPU支持大量外设。</p>
+<p>PIE 块包含 12 个组。在每个组内，有十六个中断源。每个组具有一个 PIE 中断使能寄存器和一个 PIE 中断标志寄存器。<br>
+任何不经过 PIE 块的中断线都直接连接到 CPU，例如计时器 1/2 和 NMI。</p>
+<p>注意：<br>
+要查看 PIE 块映射，请参阅设备技术参考手册 (TRM) 中的“PIE 通道映射”表。</p>
+<p>下图显示了 F2838x 器件的 PIE 通道映射示例。</p>
+<figure data-type="image" tabindex="2"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/pie_channel_mapping.png" alt="PIE Channel Mapping Example" loading="lazy"></figure>
+<p>PIE 分配表将每个外设中断映射到该中断服务例程的唯一向量位置。左侧（行）的中断号代表 12 个核心组中断线，顶部（列）的中断号代表核心组中断线内的通道号。<br>
+12 个 PIE 组中的每一个都有一个 16 位标志寄存器 (PIEIFRx)、一个 16 位使能寄存器 (PIEIERx) 和 PIE 应答寄存器 (PIEACK) 中的一个位字段，该位字段充当整个组的公共中断屏蔽。<br>
+为了将外设中断传播到 CPU，必须设置适当的 PIEIFR、使能 PIEIER、设置 CPU IFR、使能 IER 和使能 INTM。请注意，某些外设可能有多个事件触发同一个中断信号，可以通过读取外设的状态寄存器来确定中断原因。<br>
+PIECTRL 寄存器中的使能 PIE 位用于激活 PIE 模块。请注意，当使用Driverlib函数启用和禁用中断时，PIEIER和CPU内核IER寄存器都会被修改。<br>
+Driverlib 函数可修改 PIEIER 和核心 IER 寄存器：</p>
+<pre><code class="language-c">Interrupt_enable(interruptNumber);
+Interrupt_disable(interruptNumber);
+</code></pre>
+<h2 id="pie-块初始化">PIE 块初始化</h2>
+<p>调用两个单独的函数来初始化中断模块和 PIE 块。</p>
+<pre><code class="language-c">Interrupt_initModule();
+Interrupt_initVectorTable();
+</code></pre>
+<p>在处理器初始化期间，PIE 中断映射表中映射的中断向量被复制到 PIE RAM，然后通过将 ENPIE 设置为“1”来启用 PIE 模块。<br>
+当CPU接收到中断时，从PIE RAM中取出ISR的向量地址，并执行被标记和使能的具有最高优先级的中断。<br>
+优先级由中断向量表中的位置决定。当有多个中断待处理时，编号最低的中断具有最高优先级。<br>
+综上所述，PIE初始化代码流程如下：</p>
+<ul>
+<li>设备复位并完成启动代码执行后，所选的启动选项将确定代码入口点。</li>
+<li>CodeStartBranch.asm 文件有一条指向运行时支持库入口点的长分支指令。运行时支持库完成执行后，调用main。</li>
+<li>main 中调用一个函数来初始化中断过程并启用 PIE 模块。</li>
+<li>当CPU接收到中断时，从PIE RAM中取出ISR的向量地址，并执行被标记和使能的具有最高优先级的中断。</li>
+<li>优先级由中断向量表中的位置决定。</li>
+</ul>
+<h2 id="中断处理">中断处理</h2>
+<figure data-type="image" tabindex="3"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/maskable_interrupt_sources.png" alt="Maskable Interrupt Processing" loading="lazy"></figure>
+<p>通过使用一系列标志和使能寄存器，CPU 可以配置为服务一个中断，而其他中断则保持待处理状态，或者在服务某些关键任务时可能被禁用。</p>
+<ul>
+<li>中断标志寄存器（IFR）：当核心线上出现中断信号时，该核心线的 IFR 被设置。</li>
+<li>中断启用寄存器 (IER)：如果为所需的内核线启用了适当的 IER 并且启用了 INTM，则中断信号将传播到内核。</li>
+<li>中断全局屏蔽 (INTM)：此开关是允许中断传播到内核的全局开关。</li>
+</ul>
+<p>为了对中断任务进行编程，可以将中断服务例程 (ISR) 链接到中断。</p>
+<ul>
+<li>一旦 ISR 开始处理中断，INTM 位将被禁用以防止嵌套中断。</li>
+<li>IFR 被清除并准备好接收下一个中断信号。</li>
+<li>当中断服务完成时，INTM 位自动使能，允许处理下一个中断。请注意，当 INTM 位为“0”时，“开关”关闭并启用。当该位为“1”时，“开关”打开并禁用。状态寄存器中的 INTM 位通过使用 Driverlib 函数或内联汇编指令（宏）进行管理。</li>
+<li>IER 通过启用和禁用 Driverlib 参数值进行管理。</li>
+</ul>
+<h2 id="中断标志寄存器ifr">中断标志寄存器（IFR）</h2>
+<ul>
+<li>编译器生成原子指令（不可中断）用于设置/清除IFR</li>
+<li>如果写入 IFR 时发生另一个中断，则该中断具有优先权。</li>
+<li>当 CPU 通过 PIEACK 寄存器确认中断时，IFR 寄存器的位被清除（这通常在中断服务例程 (ISR) 结束时完成）。</li>
+</ul>
+<p>用于确认 PIE 组的 Driverlib 函数：</p>
+<pre><code class="language-C">// group parameter is a logical OR of the values: INTERRUPT_ACK_GROUPx, 
+// where x is the interrupt number between 1 and 12
+
+// Acknowledges group and clears any interrupt flag within group
+// Required to receive further interrupts in PIE group (done in ISR)
+  Interrupt_clearACKGroup(group);
+</code></pre>
+<ul>
+<li>IFR 寄存器在复位时被清除</li>
+</ul>
+<h2 id="中断使能寄存器-ier">中断使能寄存器 (IER)</h2>
+<h2 id="编译器生成原子指令不可中断用于设置清除-ier">编译器生成原子指令（不可中断）用于设置/清除 IER</h2>
+<p>IER 在复位时被清除<br>
+用于修改IER的Driverlib函数：</p>
+<pre><code class="language-C">// cpuInterrupt parameter is a logical OR of the values:
+// INTERRUPT_CPU_INTx, where x is the interrupt number between 1 and 14
+// INTERRUPT_CPU_DLOGINT (CPU Data Log Interrupt)
+// INTERRUPT_CPU_RTOSINT (CPU RTOS Interrupt)
+Interrupt_enableInCPU(cpuInterrupt);
+Interrupt_disableInCPU(cpuInterrupt);
+</code></pre>
+<h2 id="中断全局屏蔽位-intm">中断全局屏蔽位 (INTM)</h2>
+<p>INTM 用于全局启用/禁用中断：<br>
+• 启用：INTM = 0<br>
+• 禁用：INTM = 1（复位值）<br>
+用于修改INTM的Driverlib函数：</p>
+<pre><code class="language-C">Interrupt_enableGlobal();
+Interrupt_disableGlobal();
+</code></pre>
+<p>或者可以使用以下宏：</p>
+<pre><code class="language-c">EINT; //defined as - asm(&quot; clrc INTM&quot;);
+DINT; //defined as - asm(&quot; setc INTM&quot;);
+</code></pre>
+<h2 id="中断信号流-总结">中断信号流-总结</h2>
+<p>概括来说，中断过程中会发生以下步骤：</p>
+<ol>
+<li>
+<p>产生外设中断并设置 PIE 中断标志寄存器。如果PIE中断使能寄存器被使能，那么内核中断标志寄存器将被置位。</p>
+</li>
+<li>
+<p>如果内核中断使能寄存器和全局中断屏蔽被使能，PIE向量表将把代码重定向到中断服务程序。</p>
+</li>
+</ol>
+<figure data-type="image" tabindex="4"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/interrupt_signal_flow.png" alt="Interrupt Signal Flow" loading="lazy"></figure>
+<h2 id="中断响应和延迟">中断响应和延迟</h2>
+<h3 id="中断响应-硬件序列">中断响应 - 硬件序列</h3>
+<figure data-type="image" tabindex="5"><img src="https://funmod.github.io/post-images/1731047984493.png" alt="" loading="lazy"></figure>
+<h3 id="中断延迟">中断延迟</h3>
+<p>中断延迟是理解实时系统响应时间的一个重要因素。评估系统中断延迟的典型方法是硬件响应中断并分支到中断向量（硬件锁存和响应）所需的周期数。</p>
+<figure data-type="image" tabindex="6"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/interrupt_latency.png" alt="Interrupt Latency" loading="lazy"></figure>
+<p>最小延迟（到 ISR 中实际工作发生时）：</p>
+<ul>
+<li>内部中断：14个周期</li>
+<li>外部中断：16个周期</li>
+</ul>
+<p>最大延迟：取决于等待状态、INTM 等。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#c2000%E8%AE%BE%E5%A4%87%E4%B8%AD%E7%9A%84%E4%B8%AD%E6%96%AD%E6%9E%B6%E6%9E%84">C2000设备中的中断架构</a></li>
+<li><a href="#pie-%E5%9D%97%E5%88%9D%E5%A7%8B%E5%8C%96">PIE 块初始化</a></li>
+<li><a href="#%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86">中断处理</a></li>
+<li><a href="#%E4%B8%AD%E6%96%AD%E6%A0%87%E5%BF%97%E5%AF%84%E5%AD%98%E5%99%A8ifr">中断标志寄存器（IFR）</a></li>
+<li><a href="#%E4%B8%AD%E6%96%AD%E4%BD%BF%E8%83%BD%E5%AF%84%E5%AD%98%E5%99%A8-ier">中断使能寄存器 (IER)</a></li>
+<li><a href="#%E7%BC%96%E8%AF%91%E5%99%A8%E7%94%9F%E6%88%90%E5%8E%9F%E5%AD%90%E6%8C%87%E4%BB%A4%E4%B8%8D%E5%8F%AF%E4%B8%AD%E6%96%AD%E7%94%A8%E4%BA%8E%E8%AE%BE%E7%BD%AE%E6%B8%85%E9%99%A4-ier">编译器生成原子指令（不可中断）用于设置/清除 IER</a></li>
+<li><a href="#%E4%B8%AD%E6%96%AD%E5%85%A8%E5%B1%80%E5%B1%8F%E8%94%BD%E4%BD%8D-intm">中断全局屏蔽位 (INTM)</a></li>
+<li><a href="#%E4%B8%AD%E6%96%AD%E4%BF%A1%E5%8F%B7%E6%B5%81-%E6%80%BB%E7%BB%93">中断信号流-总结</a></li>
+<li><a href="#%E4%B8%AD%E6%96%AD%E5%93%8D%E5%BA%94%E5%92%8C%E5%BB%B6%E8%BF%9F">中断响应和延迟</a>
+<ul>
+<li><a href="#%E4%B8%AD%E6%96%AD%E5%93%8D%E5%BA%94-%E7%A1%AC%E4%BB%B6%E5%BA%8F%E5%88%97">中断响应 - 硬件序列</a></li>
+<li><a href="#%E4%B8%AD%E6%96%AD%E5%BB%B6%E8%BF%9F">中断延迟</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://funmod.github.io/post/hello-gridea/">
+              <h3 class="post-title">
+                Hello Gridea
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+  <a class="rss" href="https://funmod.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

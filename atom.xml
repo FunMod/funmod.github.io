@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://funmod.github.io</id>
+    <title>FunMod</title>
+    <updated>2024-11-11T09:24:14.501Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://funmod.github.io"/>
+    <link rel="self" href="https://funmod.github.io/atom.xml"/>
+    <subtitle>温故而知新</subtitle>
+    <logo>https://funmod.github.io/images/avatar.png</logo>
+    <icon>https://funmod.github.io/favicon.ico</icon>
+    <rights>All rights reserved 2024, FunMod</rights>
+    <entry>
+        <title type="html"><![CDATA[C2000---增强型脉宽调制 (EPWM) 实验]]></title>
+        <id>https://funmod.github.io/post/c2000-zeng-qiang-xing-mai-kuan-diao-zhi-epwm-shi-yan/</id>
+        <link href="https://funmod.github.io/post/c2000-zeng-qiang-xing-mai-kuan-diao-zhi-epwm-shi-yan/">
+        </link>
+        <updated>2024-11-11T09:23:17.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="c2000-增强型脉宽调制-epwm-实验">C2000---增强型脉宽调制 (EPWM) 实验</h1>
+<p>本实验的目标是熟悉增强型脉宽调制 (EPWM) 模块。 EPWM 模块将配置为生成指定频率和占空比的 PWM 信号。然后，模数转换器 (ADC) 将用于对该 PWM 信号进行采样。这将需要第二个 EPWM 信号来触发 ADC 转换开始 (SOC) 信号，以便 ADC 开始采样。我们还将使用增强型捕获 (ECAP) 模块测量第一个 PWM 信号的占空比和周期。</p>
+<p>在本实验中，我们将使用 Sysconfig GUI 通过 EPWM 模块之一生成波形。 PWM 波形的周期和占空比将由 ECAP 模块之一测量。此外，我们将使用 ADC 对 PWM 波形进行采样。我们将相应的样本存储在循环缓冲区中，这将允许我们在 Code Composer Studio 调试会话中查看 PWM 波形。 SysConfig GUI 工具还将用于配置 ECAP 和 ADC 模块。</p>
+<figure data-type="image" tabindex="1"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm_intro.png" alt="lab_epwm_intro" loading="lazy"></figure>
+<h2 id="start-a-ccs-project">Start a CCS Project</h2>
+<p>Our first task is to import an empty project to our Code Composer Studio (CCS) workspace. The basic instructions are as follows:</p>
+<ol>
+<li>Open CCS and go to <strong>Project→Import CCS Projects</strong>. A new window should appear. Ensure that the <strong>Select search-directory</strong> option is activated.</li>
+<li>Click the <strong>Browse</strong> button and select the <code>[C20000ware_Install_dir]/training/device/[device]/empty_lab</code> directory. Note that the default Windows [C20000ware_Install_dir] is <code>C:/ti/c2000/C2000Ware_x_xx_xx_xx</code>.</li>
+<li>Under <strong>Discovered Projects</strong>, you should now see the <code>lab_[board]_[device]</code> project. Select the appropriate project for either the control card or the launchpad.</li>
+</ol>
+<figure data-type="image" tabindex="2"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/project_start4.png" alt="Discovered_Projects" loading="lazy"></figure>
+<ol>
+<li>Click <strong>Finish</strong> to import and copy the <code>lab_[board]_[device]</code> project into your workspace.</li>
+<li>After the project has been imported, the project explorer window should look like below:</li>
+</ol>
+<figure data-type="image" tabindex="3"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/project_view4.png" alt="Projects_explorer" loading="lazy"></figure>
+<ol>
+<li>Rename the project to your liking
+<ul>
+<li>Right-click on the project in “Project Explorer” pane. Select ‘Rename’ from the drop down menu and rename the project to ‘c2000_epwm_lab’ or a name of your choosing.</li>
+<li>Now click the ‘Down Arrow’ located to the left of the imported project to expand it and select lab_main.c. Right-click on the file, and select ‘Rename’ to rename the file to c2000_epwm_lab_main.c or a name of your choosing.</li>
+</ul>
+</li>
+</ol>
+<h2 id="configure-the-gpio">Configure the GPIO</h2>
+<p>We will first set up a GPIO so that we can use one of the board LEDs as an indicator. To add the LED GPIO configuration:</p>
+<ul>
+<li>In the project, open the <code>.syscfg</code> file by double-clicking it.</li>
+<li>In the SysConfig GUI, select the “Hardware” tab</li>
+<li>If you have a Launchpad, click ‘+’ next to ‘LED’ to add LED5. If you have a controlCard, click ‘+’ to add D2.</li>
+</ul>
+<figure data-type="image" tabindex="4"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm_led.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm_led.png" alt="../../../_images/lab_epwm_led.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Select the LED option like below.</li>
+</ul>
+<figure data-type="image" tabindex="5"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm_led2.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm_led2.png" alt="../../../_images/lab_epwm_led2.png" loading="lazy"></a></figure>
+<p>\</p>
+<h2 id="configure-the-epwms">Configure the EPWMs</h2>
+<p>For Devices F2837xD, F2837xS, F2838x, F28003x, F280013x, F280015x, F28P65x, and F28P55x:</p>
+<p>The SYSCLK generated from the internal oscillator is higher than 100MHz on these devices. For example, the EPWM clock for F28003x is 120MHz. The maximum EPWM clock is still 100MHz on F2837xD, F2837xS, and F2838x, but the ADC clock is equal to the device SYSCLK. When clock dividers are selected in the following modules, you may need to modify your dividers to achieve exactly the same results.</p>
+<p>You may also notice that your device has different parameters than the ones seen in the images below. Do not worry, as all of the essential parameters for this lab are available on all devices.</p>
+<h3 id="set-up-epwm1">Set Up EPWM1</h3>
+<p>We will now configure EPWM1A to output a 2kHz PWM waveform with a 25% duty cycle. We will begin by setting the EPWM clock prescalars. The EPWM clock frequency has been set to be 100MHz. If you have a F2837xD or F2838x based device, the EPWM clock frequency is half of <code>DEVICE_SYSCLK_FREQ</code> by default, otherwise <code>DEVICE_SYSCLK_FREQ</code> and the EPWM clock frequency are equal. Since the time base counter is 16 bits wide and (10^8/2000 &lt; 2^16), there is no need to divide the EPWM clock. Hence, we set the clock division to 1.</p>
+<p>Next, we will set the time base period. In this lab, we will use up-down-count mode which yields a symmetric PWM waveform. This leads to the following calculations for the time base period:</p>
+<p>Time Base Period=ftbclk/2fpwm</p>
+<p>Note that for just up-count mode or down-count mode, the calculation would be:</p>
+<p>Time Base Period=ftbclk/fpwm−1.</p>
+<p>Additionally, we will set the period load mode to shadow load mode, and we will set the phase shift to be 0 since we will not be performing any synchronization.</p>
+<p>Next, we will configure the parameters of the counter compare module for EPWM1A to achieve a 25% duty cycle. Since we are will be in up-down-count mode, a counter compare event will happen twice: once while counting up, and once while counting down. This suggests the following for a 25% duty cycle:</p>
+<p>Counter Compare Value=(1−duty100)∗tbprd=(1−25100)25000=18750</p>
+<p>Notice that the global variable <code>ePwm_curDuty</code> will be initialized accordingly. For the strict up-count or down-count modes, the calculation would be:</p>
+<p>Counter Compare Value=(1−duty100)∗(tbprd+1)−1.</p>
+<p>Next, we will set the counter compare load mode so that it loads a new counter compare value on when the EPWM counter is at zero or at the period value. This will allow us to change the value of <code>ePwm_curDuty</code> in a real-time CCS debug session. Shadow load mode is also enabled to avoid output glitches when we change the counter compare value.</p>
+<p>Finally, we will set the counter mode to up-down-count mode. Note that we still will not have enabled the clock to the EPWM modules. This will complete the configuration of EPWM1A.</p>
+<ul>
+<li>To implement the above described specifications for EPWM1 in SysConfig, first click the ‘+’ by the EPWM module of the SysConfig ‘Software’ tab to add an instance of EPWM module.</li>
+</ul>
+<figure data-type="image" tabindex="6"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/epwm_start_11.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/epwm_start_11.png" alt="../../../_images/epwm_start_11.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘EPWM Time Base’ dropdown menu, and apply the changes circled below.</li>
+<li>Expand the ‘EPWM Counter Compare’ dropdown menu, and again apply the circled changes.</li>
+</ul>
+<figure data-type="image" tabindex="7"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_12.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_12.png" alt="../../../_images/lab_epwm1_12.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘EPWM Action Qualifier’ dropdown menu, then apply the changes circled below.</li>
+</ul>
+<figure data-type="image" tabindex="8"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_21.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_21.png" alt="../../../_images/lab_epwm1_21.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘EPWMxA Event Output Configuration’ dropdown menu, then apply the changes circled below.</li>
+</ul>
+<figure data-type="image" tabindex="9"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_actions1.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_actions1.png" alt="../../../_images/lab_epwm1_actions1.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘PinMux Peripheral and Pin Configuration’ dropdown menu. For ‘EPWM Peripheral’, make sure to select instance EPWM1. Also, make sure to select ‘GPIO0’ for ‘EPWMA’ and select ‘GPIO1’ for ‘EPWMB’, as shown below. The pin number will vary based on hardware.</li>
+</ul>
+<figure data-type="image" tabindex="10"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_32.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm1_32.png" alt="../../../_images/lab_epwm1_32.png" loading="lazy"></a></figure>
+<p>\</p>
+<h3 id="set-up-epwm2">Set Up EPWM2</h3>
+<p>In order to view the EPWM1 waveform in CCS, we will sample the EPWM1 waveform using the ADC. In general, EPWM modules can be used to trigger a start-of-conversion (SOC) event on the ADC. We will use this technique in this lab by sampling our EPWM1 waveform at a sampling rate of 50kHz via EPWM2 which will be used trigger the ADC sampling. The first steps in the configuration of EPWM2 will be identical to EPWM1. However, we will use the <strong>up-count</strong> mode rather than the <strong>up-down-count mode</strong>. Thus, to achieve a sampling rate of 50kHz, we need</p>
+<p>Time Base Period=100∗10650000−1=1999.</p>
+<p>Next, we will configure EPWM2 to trigger an SOC on the ADC. Notice that the trigger source will be the event where the EPWM counter reaches the time base period value. Hence, an SOC event will occur once per EPWM2 period at a rate of 50kHz. The event prescale setting will be set to 1 since we would like the SOC to happen at each event where the counter is equal to the time base period.</p>
+<ul>
+<li>To implement the above described specifications for EPWM2 in SysConfig, click the ‘+’ by EPWM to open a second instance of the EPWM module.</li>
+</ul>
+<figure data-type="image" tabindex="11"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/epwm_start_21.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/epwm_start_21.png" alt="../../../_images/epwm_start_21.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘EPWM Time Base’ dropdown menu, and apply the changes circled below.</li>
+</ul>
+<figure data-type="image" tabindex="12"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm2_12.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm2_12.png" alt="../../../_images/lab_epwm2_12.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘EPWM Event-Trigger’ dropdown menu, and apply the changes circled below.</li>
+</ul>
+<figure data-type="image" tabindex="13"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm2_22.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm2_22.png" alt="../../../_images/lab_epwm2_22.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘PinMux Peripheral and Pin Configuration’ dropdown menu, and apply the changes circled below. Also, make sure to select ‘GPIO2’ for ‘EPWMA’ and select ‘GPIO3’ for ‘EPWMB’, as shown below. The pin number will vary based on hardware.</li>
+</ul>
+<figure data-type="image" tabindex="14"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm2_32.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_epwm2_32.png" alt="../../../_images/lab_epwm2_32.png" loading="lazy"></a></figure>
+<p>\</p>
+<p>This concludes the configuration of the EPWM modules.</p>
+<h2 id="configure-the-adc">Configure the ADC</h2>
+<p>In the previous section, we explained that EPWM2 would be triggering a SOC event on the ADC. In this section, we will provide the code to configure the ADC. More details about the configuration of the ADC can be found in <a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/source/c2000_analog_subsystem/c2000_analog_to_digital_converter.html">Analog-to-Digital Converter (ADC)</a>. However, notice that we have setup a SOC to be triggered by EPWM2 and that we have setup the ADC to interrupt at the end of a conversion. Hence, the interrupt service routine will be triggered at a rate of 50kHz. The ADC is also setup in continuous mode so that the ADC register always contains the most recent sample.</p>
+<ul>
+<li>Add ADC by clicking the ‘+’ by ADC in the SysConfig screen. Make sure to make the changes circled below. If your device SYSCLK is not 100MHz, you will need to change the ADC Clock Prescaler to acheive the same results.</li>
+<li>For the ‘SOC0 Sample Window[SYSCLK counts]’ parameter, the same value may result in a different ‘SOC0 Sample Time[ns]’ on different devices, due to varying SYSCLK frequencies across devices. Make sure that the generated ‘SOC0 Sample Time[ns]’ is about 80ns.</li>
+</ul>
+<figure data-type="image" tabindex="15"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/epwm_adc_11.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/epwm_adc_11.png" alt="../../../_images/epwm_adc_11.png" loading="lazy"></a></figure>
+<p>\</p>
+<ul>
+<li>Expand the ‘Register PIE Interrupt Handlers’ dropdown menu, and register Interrupt 1, as shown below. This should trigger the ‘ADCA Interrupt 1’ dropdown menu to appear.</li>
+<li>Expand the ‘ADCA Interrupt 1’ dropdown menu, and change the interrupt handler to ‘adcA1ISR’. Make sure this interrupt handler matches the name of the interrupt in the ISR code snippet below. Also click the checkbox to enable the interrupt in PIE, as shown below.</li>
+</ul>
+<figure data-type="image" tabindex="16"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_adc_21.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_adc_21.png" alt="../../../_images/lab_adc_21.png" loading="lazy"></a></figure>
+<p>\</p>
+<p>For devices F28002x, F28003x, F280013x, F280015x, F28P65x, and F28P55x:</p>
+<p>Set analog reference voltage using asysctl parameter.</p>
+<p>Add ASYSCTL by clicking ‘+’ in ANALOG group and then add internal reference of 1.65V.</p>
+<figure data-type="image" tabindex="17"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/lab_adc_internal_ref2.png" alt="ASYSCTL" loading="lazy"></figure>
+<p>If using F28P65x LaunchPad, be sure to remove the external voltage reference jumper from your LaunchPad to generate the correct output signals for this lab.</p>
+<h3 id="set-up-the-adc-isr">Set Up the ADC ISR</h3>
+<p>In this section, we will define the ADC interrupt service routine (ISR). This ISR will store samples from the ADC in a circular buffer so that we can view the EPWM1 waveform using the real-time debug features in CCS. The necessary code is shown below. In addition to storing the ADC samples in a circular buffer, this ISR also toggles one of the board LEDs at a rate of 1Hz and allows for the duty cycle of EPWM1A to be changed on the fly or be modulated during a CCS debug session.</p>
+<p>The global flag variable <code>DutyModOn</code> controls whether or not the duty cycle is modulated:</p>
+<ul>
+<li>When <code>DutyModOn</code> is set to 1, the PWM waveform duty cycle slowly scale from 5% to 95% and back down to 5% (and repeat).</li>
+</ul>
+<p>Copy the following code into your source .c file:</p>
+<pre><code>__interrupt void adcA1ISR(void)
+{
+    // Clear interrupt flags.
+    Interrupt_clearACKGroup(INT_myADC0_1_INTERRUPT_ACK_GROUP);
+    ADC_clearInterruptStatus(myADC0_BASE, ADC_INT_NUMBER1);
+    // Write contents of the ADC register to a circular buffer.
+    *AdcBufPtr = ADC_readResult(myADC0_RESULT_BASE, myADC0_SOC0);
+    if (AdcBufPtr == (AdcBuf + 49))
+    {
+        // Force buffer to wrap around.
+        AdcBufPtr = AdcBuf;
+    } else {
+        AdcBufPtr += 1;
+    }
+    if (LedCtr &gt;= 49999) {
+        // Divide 50kHz sample rate by 50e3 to toggle LED at a rate of 1Hz.
+        GPIO_togglePin(myBoardLED0_GPIO);
+        LedCtr = 0;
+    } else {
+        LedCtr += 1;
+    }
+    if (DutyModOn) {
+        // Divide 50kHz sample rate by 16 to slow down duty modulation.
+        if (DutyModCtr &gt;= 15) {
+            if (DutyModDir == 0) {
+                // Increment State =&gt; Decrease Duty Cycle.
+                if (ePwm_curDuty &gt;= ePwm_MinDuty) {
+                    DutyModDir = 1;
+                } else {
+                    ePwm_curDuty += 1;
+                }
+            } else {
+                // Decrement State =&gt; Increase Duty Cycle.
+                if (ePwm_curDuty &lt;= ePwm_MaxDuty) {
+                    DutyModDir = 0;
+                } else {
+                    ePwm_curDuty -= 1;
+                }
+            }
+            DutyModCtr = 0;
+        } else {
+            DutyModCtr += 1;
+        }
+    }
+    // Set the counter compare value.
+    EPWM_setCounterCompareValue(myEPWM0_BASE, EPWM_COUNTER_COMPARE_A, ePwm_curDuty);
+}
+</code></pre>
+<h2 id="configure-the-ecap">Configure the ECAP</h2>
+<p>We can use the ECAP peripheral to measure the duty cycle and period of our EPWM1 waveform. We start by resetting the ECAP1 peripheral, disabling time stamp capture, and stopping the internal counter. This will put the ECAP1 registers in a known state, and it will freeze the internal ECAP counter. This way, when we start the ECAP, it will initially behave in a predictable manner. This can be very important for many practical usage scenarios.</p>
+<ul>
+<li>To begin setting up the ECAP, clicking the ‘+’ next to the ECAP module in SysConfig.</li>
+</ul>
+<p>The following setup will enable continuous capture mode with 4 sequential timestamped events. Notice the configuration of the 4 different event polarities. This configuration will allow us to measure the duty cycle from events 1 and 2, and measure the period from events 1 and 3. Since we need the internal counter to hold its count from event 1 to event 4, we have disabled the counter reset on these events. Also notice that the ECAP input will be the signal from <code>XBAR_INPUT7</code>. GPIO0 (which contains our EPWM1 waveform) will be mapped to <code>XBAR_INPUT7</code> so that it is the source of the input to the ECAP.</p>
+<figure data-type="image" tabindex="18"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/ecap_1.png" alt="ECAP1" loading="lazy"></figure>
+<p>Next, we enable an interrupt after event 3 is captured. This allows us to calculate the period and duty cycle in the interrupt service routine.</p>
+<ul>
+<li>Expand the ‘ECAP Interrupt’ dropdown menu</li>
+<li>Change the interrupt handler to ‘ecap1ISR’. Make sure this interrupt handler matches the name of the interrupt in the ISR code snippet below.</li>
+<li>Click the checkbox to enable the interrupt in PIE, as shown below.</li>
+</ul>
+<figure data-type="image" tabindex="19"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/ecap_2.png" alt="ECAP2" loading="lazy"></figure>
+<h3 id="set-up-inputxbar7">Set Up InputXBAR7</h3>
+<p>Now, GPIO0 (which contains our EPWM1 waveform) will be mapped to <code>XBAR_INPUT7</code> below.</p>
+<ul>
+<li>Add INPUTXBAR by clicking the ‘+’ in SysConfig, and apply the changes circled below. Make sure the interrupt handler matches the name of the interrupt in the ISR code snippet below.</li>
+</ul>
+<figure data-type="image" tabindex="20"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/inputxbar.png" alt="INPUTXBAR" loading="lazy"></figure>
+<h3 id="set-up-the-ecap-isr">Set Up the ECAP ISR</h3>
+<p>In the last section, we enabled an interrupt on the ECAP in SysConfig. The corresponding interrupt service routine (ISR) is named <code>ecap1ISR</code> and is shown below. The global variable <code>eCapPwmPeriod</code> stores the difference between the ECAP timestamps from event 3 and 1, which allows us to calculate the period. Since the ECAP units operate on the system clock, the frequency of the PWM waveform can be calculated using:</p>
+<p>fpwm≈DEVICE_SYSCLK_FREQeCapPwmPeriod.</p>
+<p>The global variable <code>eCapPwmDuty</code> will store the difference between the ECAP timestamps from event 2 and 1, which allows us to calculate the duty cycle. The duty cycle can be calculated via:</p>
+<p>duty≈eCapPwmDutyeCapPwmPeriod100.</p>
+<p>Copy the following code into your source .c file:</p>
+<pre><code>__interrupt void ecap1ISR(void)
+{
+    Interrupt_clearACKGroup(INT_myECAP0_INTERRUPT_ACK_GROUP);
+    ECAP_clearGlobalInterrupt(myECAP0_BASE);
+    ECAP_clearInterrupt(myECAP0_BASE, ECAP_ISR_SOURCE_CAPTURE_EVENT_3);
+    eCapPwmDuty = (int32_t)ECAP_getEventTimeStamp(myECAP0_BASE, ECAP_EVENT_2) -
+                  (int32_t)ECAP_getEventTimeStamp(myECAP0_BASE, ECAP_EVENT_1);
+    eCapPwmPeriod = (int32_t)ECAP_getEventTimeStamp(myECAP0_BASE, ECAP_EVENT_3) -
+                    (int32_t)ECAP_getEventTimeStamp(myECAP0_BASE, ECAP_EVENT_1);
+}
+</code></pre>
+<h2 id="program-setup">Program Setup</h2>
+<h3 id="define-global-macros-and-variables">Define Global Macros and Variables</h3>
+<p>At the top of your source .c file (after any included files), copy the following code to define necessary macros and global variables.</p>
+<pre><code>uint32_t ePwm_TimeBase;
+uint32_t ePwm_MinDuty;
+uint32_t ePwm_MaxDuty;
+uint32_t ePwm_curDuty;
+uint16_t AdcBuf[50];            // Buffer to store ADC samples.
+uint16_t *AdcBufPtr = AdcBuf;   // Pointer to ADC buffer samples.
+uint16_t LedCtr = 0;            // Counter to slow down LED toggle in ADC ISR.
+uint16_t DutyModOn = 0;         // Flag to turn on/off duty cycle modulation.
+uint16_t DutyModDir = 0;        // Flag to control duty mod direction up/down.
+uint16_t DutyModCtr = 0;        // Counter to slow down rate of modulation.
+int32_t eCapPwmDuty;            // Percent = (eCapPwmDuty/eCapPwmPeriod)*100.
+int32_t eCapPwmPeriod;          // Frequency = DEVICE_SYSCLK_FREQ/eCapPwmPeriod.
+</code></pre>
+<h3 id="define-main">Define main()</h3>
+<p>Next, we will populate <code>main()</code> as shown below.</p>
+<p>We will still need to know the system clock frequency in order to configure our PWM waveform frequency. The system clock frequency value is defined via the macro <code>DEVICE_SYSCLK_FREQ</code> in <code>[projectroot]/device/device.h</code>. Observe that the main function only handles initialization routines. Most of the activity in this lab lies in the peripherals themselves and their interrupt service routines.</p>
+<p>Copy the following code into your source .c file:</p>
+<pre><code>void main(void)
+{
+    Device_init();
+    Interrupt_initModule();
+    Interrupt_initVectorTable();
+    Board_init();
+    // Initialize variables for EPWM Duty Cycle
+    ePwm_TimeBase = EPWM_getTimeBasePeriod(myEPWM0_BASE);
+    ePwm_MinDuty = (uint32_t)(0.95f * (float)ePwm_TimeBase);
+    ePwm_MaxDuty = (uint32_t)(0.05f * (float)ePwm_TimeBase);
+    ePwm_curDuty = EPWM_getCounterCompareValue(myEPWM0_BASE, EPWM_COUNTER_COMPARE_A);
+    EINT;
+    ERTM;
+    for (;;) {
+        NOP;
+    }
+}
+</code></pre>
+<p>This concludes the coding portion of this lab.</p>
+<h2 id="build-and-run-the-project">Build and Run the Project</h2>
+<ol>
+<li>Ensure that the USB cable from your LaunchPad or controlCARD is connected to your computer.</li>
+<li>Under the <strong>Build</strong> button, activate the <strong>CPU1_RAM</strong> build configuration.</li>
+<li>Make sure your project’s target configuration file (.ccxml) is active.</li>
+<li>Connect the EPWM1A GPIO pin to the ADCINA0 GPIO pin using a jumper cable. If you have an oscilloscope, connect a probe to the EPWM1A GPIO pin on your board.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Device</th>
+<th style="text-align:left">ADCINA0 Pin</th>
+<th style="text-align:left">EPWM1A Pin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">F28379D</td>
+<td style="text-align:left">30</td>
+<td style="text-align:left">40</td>
+</tr>
+<tr>
+<td style="text-align:left">F2838x</td>
+<td style="text-align:left">n/a</td>
+<td style="text-align:left">n/a</td>
+</tr>
+<tr>
+<td style="text-align:left">F28004x</td>
+<td style="text-align:left">70</td>
+<td style="text-align:left">80</td>
+</tr>
+<tr>
+<td style="text-align:left">F28002x</td>
+<td style="text-align:left">69</td>
+<td style="text-align:left">40</td>
+</tr>
+<tr>
+<td style="text-align:left">F28003x</td>
+<td style="text-align:left">70</td>
+<td style="text-align:left">40</td>
+</tr>
+<tr>
+<td style="text-align:left">F280013x</td>
+<td style="text-align:left">69</td>
+<td style="text-align:left">40</td>
+</tr>
+<tr>
+<td style="text-align:left">F280015x</td>
+<td style="text-align:left">69</td>
+<td style="text-align:left">36</td>
+</tr>
+<tr>
+<td style="text-align:left">F28P65x</td>
+<td style="text-align:left">30</td>
+<td style="text-align:left">78</td>
+</tr>
+<tr>
+<td style="text-align:left">F28P55x</td>
+<td style="text-align:left">70</td>
+<td style="text-align:left">40</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Device</th>
+<th style="text-align:left">ADCINA0 Pin</th>
+<th style="text-align:left">EPWM1A Pin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">F28379D</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F2838x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F28004x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F28002x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F28003x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F280013x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F280015x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F28P65x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+<tr>
+<td style="text-align:left">F28P55x</td>
+<td style="text-align:left">9</td>
+<td style="text-align:left">49</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>Now we will start the debug session. Under the debug button, start the debug session using the new configuration. You should now see the debugging session open up and the debugger should have reached <code>main()</code>.</li>
+<li>Click the <strong>Resume</strong> button. You should see the LED on your board toggling at about 1Hz which indicates that the sampling rate is 50kHz as desired.</li>
+<li>Find the <code>eCapPwmDuty</code> and <code>eCapPwmPeriod</code> global variables in the debug source code window, highlight their text, right click, and click <strong>Add Watch Expression</strong>. Activate the <strong>Continuous Refresh</strong> option. If all is well, the expressions pane should show values of <code>eCapPwmDuty</code> and <code>eCapPwmPeriod</code> such that eCapPwmDutyeCapPwmPeriod100≈25 which indicates the correct duty cycle of 25%. Additionally, DEVICE_SYSCLK_FREQeCapPwmPeriod≈2000 which indicates the correct PWM frequency of 2kHz.</li>
+</ol>
+<figure data-type="image" tabindex="21"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/watch_expression.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/watch_expression.png" alt="../../../_images/watch_expression.png" loading="lazy"></a></figure>
+<ol start="8">
+<li>Now we will view our waveform from the samples in <code>AdcBuf</code>. Click on <strong>Tools → Graph → Single Time</strong>, and use the following settings:</li>
+</ol>
+<ul>
+<li><em>Acquisition Buffer Size</em>: 50</li>
+<li><em>Dsp Data Type</em>: 16 bit unsigned integer</li>
+<li><em>Sampling Rate Hz</em>: 50000</li>
+<li><em>Start Address</em>: AdcBuf</li>
+<li><em>Time Display Unit</em>: us</li>
+<li>Leave the other settings as their default value. Click <strong>OK</strong> and you should see the plot window open up.</li>
+<li>Activate the <strong>Continuous Refresh</strong> option in the plot window. You should now see several periods of the PWM waveform in the plot updating in real-time. If desired, you can use the measurement tool to verify the duty cycle and period.</li>
+</ul>
+<figure data-type="image" tabindex="22"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/plot_setup1.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/plot_setup1.png" alt="../../../_images/plot_setup1.png" loading="lazy"></a></figure>
+<p>\</p>
+<p>Important</p>
+<p>Note: If you do not see CCS menu <strong>Tools → Graph</strong>, please refer to <a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/source/c2000_get_started/c2000_getstarted.html">Getting Started (Setting CCS for graph)</a> to see the instruction on how to enable CCS graphing tool in your perspective.</p>
+<figure data-type="image" tabindex="23"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/plot_pwm1.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/plot_pwm1.png" alt="../../../_images/plot_pwm1.png" loading="lazy"></a></figure>
+<p>\</p>
+<ol>
+<li>Next, add <code>ePwm_curDuty</code> to the watch expression list. Play with values of <code>ePwm_curDuty</code> from 1250 to 23750. You should see the duty cycle of the PWM waveform change in real-time in the plot window. The readings from the ECAP should also update in real-time.</li>
+<li>Add <code>DutyModOn</code> to the watch expression list. Change the value to 1. You should now see the duty cycle modulate in real-time from 5% to 95% in the plot window.</li>
+</ol>
+<figure data-type="image" tabindex="24"><a href="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/plot_pwm_mod.png"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/plot_pwm_mod.png" alt="../../../_images/plot_pwm_mod.png" loading="lazy"></a></figure>
+<p>\</p>
+<ol>
+<li>Terminate the debug session and close the project. This concludes the lab assignment.</li>
+</ol>
+<h2 id="full-solution">Full Solution</h2>
+<p>The full solution to this lab exercise is included as part of the C2000Ware SDK. Import the project from <code>&lt;c2000ware_install_path&gt;/training/device/&lt;device_name&gt;/control_peripherals/lab_ePwm_eCap</code>.</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[C2000控制器---中断系统]]></title>
+        <id>https://funmod.github.io/post/c2000-kong-zhi-qi-adc/</id>
+        <link href="https://funmod.github.io/post/c2000-kong-zhi-qi-adc/">
+        </link>
+        <updated>2024-11-06T13:34:37.000Z</updated>
+        <content type="html"><![CDATA[<p>中断是处理器对需要注意的事件的响应。处理器会尽快执行中断服务例程 (ISR) 中定义的指令，然后返回正常的操作任务。与代码等待事件发生的空闲循环不同，中断提供了根据 CPU 的可用性和任务优先级执行非空闲代码循环的机会。</p>
+<h2 id="c2000设备中的中断架构">C2000设备中的中断架构</h2>
+<p>请参阅Device Interrupt Architecture’ figure of the device’s Technical Reference Manual (TRM)的“设备中断架构”图，以直观地了解下述中断架构。<br>
+内部中断源包括通用定时器 0、1 和 2，以及C2000上的所有外设。<br>
+外部中断源包括五个外部中断线。从输入 X-BAR 中，INPUT4 映射到 XINT1，INPUT5 映射到 XINT2，INPUT6 映射到 XINT3，INPUT13 映射到 XINT4，INPUT14 映射到 XINT5。<br>
+外设中断扩展块，称为PIE块，用于扩展内核中断能力。定时器 0 直接连接到 PIE 模块以及来自看门狗模块的 WAKEINT 信号。对于双核器件，每个内核都有自己的 PIE 块，两个内核之间共享 XINTx 信号以及外设中断和处理器间 (IPC) 信号。</p>
+<p>该内核有 14 条中断线（对于双核器件，每个内核都有自己的一组 14 条中断线）。中断1-12 来自PIE 块，中断13 映射到定时器1，中断14 映射到定时器2。NMI 模块直接连接到映射到内核的NMI 中断。</p>
+<figure data-type="image" tabindex="1"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/PIE.png" alt="Peripheral Interrupt Expansion" loading="lazy"></figure>
+<p>外设中断扩展 (PIE) 模块将多达 16 个外设中断多路复用到 12 个 CPU 中断线中的每一个中，进一步扩展了对多达 192 个外设中断信号的支持。</p>
+<p>PIE模块还扩展了中断向量表，允许每个独特的中断信号拥有自己的中断服务例程（ISR），从而允许CPU支持大量外设。</p>
+<p>PIE 块包含 12 个组。在每个组内，有十六个中断源。每个组具有一个 PIE 中断使能寄存器和一个 PIE 中断标志寄存器。<br>
+任何不经过 PIE 块的中断线都直接连接到 CPU，例如计时器 1/2 和 NMI。</p>
+<p>注意：<br>
+要查看 PIE 块映射，请参阅设备技术参考手册 (TRM) 中的“PIE 通道映射”表。</p>
+<p>下图显示了 F2838x 器件的 PIE 通道映射示例。</p>
+<figure data-type="image" tabindex="2"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/pie_channel_mapping.png" alt="PIE Channel Mapping Example" loading="lazy"></figure>
+<p>PIE 分配表将每个外设中断映射到该中断服务例程的唯一向量位置。左侧（行）的中断号代表 12 个核心组中断线，顶部（列）的中断号代表核心组中断线内的通道号。<br>
+12 个 PIE 组中的每一个都有一个 16 位标志寄存器 (PIEIFRx)、一个 16 位使能寄存器 (PIEIERx) 和 PIE 应答寄存器 (PIEACK) 中的一个位字段，该位字段充当整个组的公共中断屏蔽。<br>
+为了将外设中断传播到 CPU，必须设置适当的 PIEIFR、使能 PIEIER、设置 CPU IFR、使能 IER 和使能 INTM。请注意，某些外设可能有多个事件触发同一个中断信号，可以通过读取外设的状态寄存器来确定中断原因。<br>
+PIECTRL 寄存器中的使能 PIE 位用于激活 PIE 模块。请注意，当使用Driverlib函数启用和禁用中断时，PIEIER和CPU内核IER寄存器都会被修改。<br>
+Driverlib 函数可修改 PIEIER 和核心 IER 寄存器：</p>
+<pre><code class="language-c">Interrupt_enable(interruptNumber);
+Interrupt_disable(interruptNumber);
+</code></pre>
+<h2 id="pie-块初始化">PIE 块初始化</h2>
+<p>调用两个单独的函数来初始化中断模块和 PIE 块。</p>
+<pre><code class="language-c">Interrupt_initModule();
+Interrupt_initVectorTable();
+</code></pre>
+<p>在处理器初始化期间，PIE 中断映射表中映射的中断向量被复制到 PIE RAM，然后通过将 ENPIE 设置为“1”来启用 PIE 模块。<br>
+当CPU接收到中断时，从PIE RAM中取出ISR的向量地址，并执行被标记和使能的具有最高优先级的中断。<br>
+优先级由中断向量表中的位置决定。当有多个中断待处理时，编号最低的中断具有最高优先级。<br>
+综上所述，PIE初始化代码流程如下：</p>
+<ul>
+<li>设备复位并完成启动代码执行后，所选的启动选项将确定代码入口点。</li>
+<li>CodeStartBranch.asm 文件有一条指向运行时支持库入口点的长分支指令。运行时支持库完成执行后，调用main。</li>
+<li>main 中调用一个函数来初始化中断过程并启用 PIE 模块。</li>
+<li>当CPU接收到中断时，从PIE RAM中取出ISR的向量地址，并执行被标记和使能的具有最高优先级的中断。</li>
+<li>优先级由中断向量表中的位置决定。</li>
+</ul>
+<h2 id="中断处理">中断处理</h2>
+<figure data-type="image" tabindex="3"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/maskable_interrupt_sources.png" alt="Maskable Interrupt Processing" loading="lazy"></figure>
+<p>通过使用一系列标志和使能寄存器，CPU 可以配置为服务一个中断，而其他中断则保持待处理状态，或者在服务某些关键任务时可能被禁用。</p>
+<ul>
+<li>中断标志寄存器（IFR）：当核心线上出现中断信号时，该核心线的 IFR 被设置。</li>
+<li>中断启用寄存器 (IER)：如果为所需的内核线启用了适当的 IER 并且启用了 INTM，则中断信号将传播到内核。</li>
+<li>中断全局屏蔽 (INTM)：此开关是允许中断传播到内核的全局开关。</li>
+</ul>
+<p>为了对中断任务进行编程，可以将中断服务例程 (ISR) 链接到中断。</p>
+<ul>
+<li>一旦 ISR 开始处理中断，INTM 位将被禁用以防止嵌套中断。</li>
+<li>IFR 被清除并准备好接收下一个中断信号。</li>
+<li>当中断服务完成时，INTM 位自动使能，允许处理下一个中断。请注意，当 INTM 位为“0”时，“开关”关闭并启用。当该位为“1”时，“开关”打开并禁用。状态寄存器中的 INTM 位通过使用 Driverlib 函数或内联汇编指令（宏）进行管理。</li>
+<li>IER 通过启用和禁用 Driverlib 参数值进行管理。</li>
+</ul>
+<h2 id="中断标志寄存器ifr">中断标志寄存器（IFR）</h2>
+<ul>
+<li>编译器生成原子指令（不可中断）用于设置/清除IFR</li>
+<li>如果写入 IFR 时发生另一个中断，则该中断具有优先权。</li>
+<li>当 CPU 通过 PIEACK 寄存器确认中断时，IFR 寄存器的位被清除（这通常在中断服务例程 (ISR) 结束时完成）。</li>
+</ul>
+<p>用于确认 PIE 组的 Driverlib 函数：</p>
+<pre><code class="language-C">// group parameter is a logical OR of the values: INTERRUPT_ACK_GROUPx, 
+// where x is the interrupt number between 1 and 12
+
+// Acknowledges group and clears any interrupt flag within group
+// Required to receive further interrupts in PIE group (done in ISR)
+  Interrupt_clearACKGroup(group);
+</code></pre>
+<ul>
+<li>IFR 寄存器在复位时被清除</li>
+</ul>
+<h2 id="中断使能寄存器-ier">中断使能寄存器 (IER)</h2>
+<h2 id="编译器生成原子指令不可中断用于设置清除-ier">编译器生成原子指令（不可中断）用于设置/清除 IER</h2>
+<p>IER 在复位时被清除<br>
+用于修改IER的Driverlib函数：</p>
+<pre><code class="language-C">// cpuInterrupt parameter is a logical OR of the values:
+// INTERRUPT_CPU_INTx, where x is the interrupt number between 1 and 14
+// INTERRUPT_CPU_DLOGINT (CPU Data Log Interrupt)
+// INTERRUPT_CPU_RTOSINT (CPU RTOS Interrupt)
+Interrupt_enableInCPU(cpuInterrupt);
+Interrupt_disableInCPU(cpuInterrupt);
+</code></pre>
+<h2 id="中断全局屏蔽位-intm">中断全局屏蔽位 (INTM)</h2>
+<p>INTM 用于全局启用/禁用中断：<br>
+• 启用：INTM = 0<br>
+• 禁用：INTM = 1（复位值）<br>
+用于修改INTM的Driverlib函数：</p>
+<pre><code class="language-C">Interrupt_enableGlobal();
+Interrupt_disableGlobal();
+</code></pre>
+<p>或者可以使用以下宏：</p>
+<pre><code class="language-c">EINT; //defined as - asm(&quot; clrc INTM&quot;);
+DINT; //defined as - asm(&quot; setc INTM&quot;);
+</code></pre>
+<h2 id="中断信号流-总结">中断信号流-总结</h2>
+<p>概括来说，中断过程中会发生以下步骤：</p>
+<ol>
+<li>
+<p>产生外设中断并设置 PIE 中断标志寄存器。如果PIE中断使能寄存器被使能，那么内核中断标志寄存器将被置位。</p>
+</li>
+<li>
+<p>如果内核中断使能寄存器和全局中断屏蔽被使能，PIE向量表将把代码重定向到中断服务程序。</p>
+</li>
+</ol>
+<figure data-type="image" tabindex="4"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/interrupt_signal_flow.png" alt="Interrupt Signal Flow" loading="lazy"></figure>
+<h2 id="中断响应和延迟">中断响应和延迟</h2>
+<h3 id="中断响应-硬件序列">中断响应 - 硬件序列</h3>
+<figure data-type="image" tabindex="5"><img src="https://funmod.github.io/post-images/1731047984493.png" alt="" loading="lazy"></figure>
+<h3 id="中断延迟">中断延迟</h3>
+<p>中断延迟是理解实时系统响应时间的一个重要因素。评估系统中断延迟的典型方法是硬件响应中断并分支到中断向量（硬件锁存和响应）所需的周期数。</p>
+<figure data-type="image" tabindex="6"><img src="https://dev.ti.com/tirex/explore/content/c28x_academy_1_00_00_00/_build_c28x_academy_1_00_00_00/_images/interrupt_latency.png" alt="Interrupt Latency" loading="lazy"></figure>
+<p>最小延迟（到 ISR 中实际工作发生时）：</p>
+<ul>
+<li>内部中断：14个周期</li>
+<li>外部中断：16个周期</li>
+</ul>
+<p>最大延迟：取决于等待状态、INTM 等。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Hello Gridea]]></title>
+        <id>https://funmod.github.io/post/hello-gridea/</id>
+        <link href="https://funmod.github.io/post/hello-gridea/">
+        </link>
+        <updated>2018-12-11T16:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>👏  欢迎使用 <strong>Gridea</strong> ！<br>
+✍️  <strong>Gridea</strong> 一个静态博客写作客户端。你可以用它来记录你的生活、心情、知识、笔记、创意... ...</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>👏  欢迎使用 <strong>Gridea</strong> ！<br>
+✍️  <strong>Gridea</strong> 一个静态博客写作客户端。你可以用它来记录你的生活、心情、知识、笔记、创意... ...</p>
+<!-- more -->
+<p><a href="https://github.com/getgridea/gridea">Github</a><br>
+<a href="https://gridea.dev/">Gridea 主页</a><br>
+<a href="https://fehey.com/">示例网站</a></p>
+<h2 id="特性">特性👇</h2>
+<p>📝  你可以使用最酷的 <strong>Markdown</strong> 语法，进行快速创作</p>
+<p>🌉  你可以给文章配上精美的封面图和在文章任意位置插入图片</p>
+<p>🏷️  你可以对文章进行标签分组</p>
+<p>📋  你可以自定义菜单，甚至可以创建外部链接菜单</p>
+<p>💻  你可以在 <strong>Windows</strong>，<strong>MacOS</strong> 或 <strong>Linux</strong> 设备上使用此客户端</p>
+<p>🌎  你可以使用 <strong>𝖦𝗂𝗍𝗁𝗎𝖻 𝖯𝖺𝗀𝖾𝗌</strong> 或 <strong>Coding Pages</strong> 向世界展示，未来将支持更多平台</p>
+<p>💬  你可以进行简单的配置，接入 <a href="https://github.com/gitalk/gitalk">Gitalk</a> 或 <a href="https://github.com/SukkaW/DisqusJS">DisqusJS</a> 评论系统</p>
+<p>🇬🇧  你可以使用<strong>中文简体</strong>或<strong>英语</strong></p>
+<p>🌁  你可以任意使用应用内默认主题或任意第三方主题，强大的主题自定义能力</p>
+<p>🖥  你可以自定义源文件夹，利用 OneDrive、百度网盘、iCloud、Dropbox 等进行多设备同步</p>
+<p>🌱 当然 <strong>Gridea</strong> 还很年轻，有很多不足，但请相信，它会不停向前 🏃</p>
+<p>未来，它一定会成为你离不开的伙伴</p>
+<p>尽情发挥你的才华吧！</p>
+<p>😘 Enjoy~</p>
+]]></content>
+    </entry>
+</feed>
